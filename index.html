@@ -282,7 +282,7 @@
                                     <div class="text-xl font-bold font-mono-num" id="result_area_m2">0</div>
                                 </div>
                                 <div>
-                                    <div class="text-[10px] text-tp-gray uppercase mb-1">Sq. Units</div>
+                                    <div class="text-[10px] text-tp-gray uppercase mb-1">坪數 (Ping)</div>
                                     <div class="text-xl font-bold font-mono-num text-tp-gray" id="result_area_sq_unit">0</div>
                                 </div>
                             </div>
@@ -493,6 +493,7 @@
             }
 
             const totalAreaM2 = totalAreaSqUnit / 10000;
+            const totalPing = totalAreaM2 * 0.3025; // Calculate Ping
             let basePiecesFloat = 0;
 
             if (calcMode === 'dimension') {
@@ -507,7 +508,8 @@
 
             // Update DOM
             document.getElementById('result_pieces').textContent = finalPieces.toLocaleString('en-US');
-            document.getElementById('result_area_sq_unit').textContent = parseFloat(totalAreaSqUnit.toFixed(2)).toLocaleString('en-US');
+            // Update to Ping
+            document.getElementById('result_area_sq_unit').textContent = parseFloat(totalPing.toFixed(2)).toLocaleString('en-US');
             document.getElementById('result_area_m2').textContent = parseFloat(totalAreaM2.toFixed(2)).toLocaleString('en-US');
             document.getElementById('base_pieces').textContent = Math.ceil(basePiecesFloat).toLocaleString('en-US');
             document.getElementById('waste_pieces').textContent = Math.ceil(wastePiecesFloat).toLocaleString('en-US');
@@ -515,7 +517,7 @@
 
             // Generate Stock Inquiry Text
             const today = new Date().toLocaleDateString('zh-TW');
-            let copyText = `【磁磚庫存查詢】\nDATE: ${today}\n------------------------------\n型號: ${tileModel}\n\n需求總數: ${finalPieces} 片\n(含 ${wastePercent}% 損耗)\n\n總面積: ${parseFloat(totalAreaM2.toFixed(2))} M2\n------------------------------`;
+            let copyText = `【磁磚庫存查詢】\nDATE: ${today}\n------------------------------\n型號: ${tileModel}\n\n需求總數: ${finalPieces} 片\n(含 ${wastePercent}% 損耗)\n\n總面積: ${parseFloat(totalAreaM2.toFixed(2))} M2 (${parseFloat(totalPing.toFixed(2))} 坪)\n------------------------------`;
             
             document.getElementById('copy_text_area').value = copyText;
         }
