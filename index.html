@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>磁磚數量估算器 - Stock Inquiry</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Inter 與 JetBrains Mono (數據用) 字型 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Tilepark Order App Style */
+        :root {
+            --font-sans: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --color-bg: #F5F5F5; /* 淺灰背景，區分區塊 */
+            --color-surface: #FFFFFF;
+            --color-border: #E5E5E5;
+            --color-text-main: #111111;
+            --color-text-sub: #737373;
+            --color-accent: #111111; /* 純黑強調 */
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .font-mono-num {
+            font-family: var(--font-mono);
+            letter-spacing: -0.02em;
+        }
+
+        /* 輸入框樣式 - 更加扁平化 */
+        input[type="number"], input[type="text"], textarea {
+            background-color: #FAFAFA;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-family: var(--font-mono); /* 輸入數字時使用等寬字體 */
+            font-size: 0.95rem;
+        }
+        
+        input:focus, textarea:focus {
+            background-color: #FFFFFF;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 1px var(--color-accent);
+            outline: none;
+        }
+
+        /* 隱藏數字輸入箭頭 */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* 按鈕樣式 */
+        .btn-primary {
+            background-color: var(--color-accent);
+            color: white;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-ghost {
+            background-color: transparent;
+            border: 1px dashed #D4D4D4;
+            color: var(--color-text-sub);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .btn-ghost:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+            background-color: #fff;
+        }
+
+        /* 卡片效果 */
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px; /* 較小的圓角 */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        /* 標籤切換樣式 */
+        .tab-radio:checked + div {
+            background-color: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tp: {
+                            black: '#111111',
+                            gray: '#737373',
+                            border: '#E5E5E5',
+                            bg: '#F5F5F5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- App Header: 簡潔的頂部欄 -->
+    <header class="bg-white border-b border-tp-border sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-24 flex items-center justify-between">
+            <div class="flex items-center gap-5">
+                <!-- 公司 Logo (放大版) -->
+                <div class="h-16 w-auto relative overflow-hidden flex items-center justify-center">
+                    <img id="company-logo" 
+                         src="https://lh3.googleusercontent.com/d/1N9nrujoaGkFpdGhsBRgOs_WE-RgQEhU2" 
+                         alt="Logo" 
+                         class="h-full w-auto object-contain"
+                         referrerpolicy="no-referrer"
+                         onerror="this.style.display='none'">
+                    <!-- Logo Fallback Icon -->
+                    <svg id="logo-fallback" class="w-10 h-10 text-tp-black hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-tp-black leading-tight">薩鉅國際有限公司</h1>
+                    <p class="text-xs text-tp-gray uppercase tracking-wider">Quantity Estimation System</p>
+                </div>
+            </div>
+            
+            <!-- 聯絡資訊 (Header Right) -->
+            <div class="hidden sm:flex items-center gap-4 text-xs font-mono text-tp-gray">
+                <a href="https://www.tilepark.com.tw/" target="_blank" class="hover:text-tp-black hover:underline transition-all flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    tilepark.com.tw
+                </a>
+                <span class="text-tp-border">|</span>
+                <span>TEL: 02-86860028</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout: Split View for Desktop -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Configuration (8 cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Section 1: Product Config -->
+            <section class="card p-6">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-sm font-bold text-tp-black uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2 h-2 bg-tp-black rounded-full"></span>
+                        磁磚規格
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Model Name -->
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-tp-gray mb-1.5">型號 / 名稱</label>
+                        <input type="text" id="tile_model" placeholder="輸入磁磚型號..." 
+                               class="w-full p-2.5" oninput="calculateTiles()">
+                    </div>
+
+                    <!-- Mode Toggle -->
+                    <div class="col-span-2 bg-tp-bg p-1 rounded-lg flex gap-1 border border-tp-border">
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="calc_mode" value="dimension" checked class="tab-radio hidden" onchange="updateTileInputs()">
+                            <div class="text-center py-2 text-xs font-medium text-tp-gray rounded-[5px] transition-colors hover:text-tp-black">
+                                長寬尺寸 (Dimensions)
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="calc_mode" value="rate" class="tab-radio hidden" onchange="updateTileInputs()">
+                            <div class="text-center py-2 text-xs font-medium text-tp-gray rounded-[5px] transition-colors hover:text-tp-black">
+                                建議用量 (Rate)
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Dimension Inputs -->
+                    <div id="tile_dimension_inputs" class="col-span-2 grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-tp-gray mb-1.5">長度 (Length)</label>
+                            <div class="relative">
+                                <input type="number" id="tile_length" placeholder="60" value="60" class="w-full p-2.5 pr-8" oninput="calculateTiles()">
+                                <span class="absolute right-3 top-2.5 text-xs text-tp-gray">cm</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-tp-gray mb-1.5">寬度 (Width)</label>
+                            <div class="relative">
+                                <input type="number" id="tile_width" placeholder="30" value="30" class="w-full p-2.5 pr-8" oninput="calculateTiles()">
+                                <span class="absolute right-3 top-2.5 text-xs text-tp-gray">cm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rate Inputs -->
+                    <div id="tile_rate_input" class="col-span-2 hidden">
+                        <label class="block text-xs font-medium text-tp-gray mb-1.5">每平米用量</label>
+                        <div class="relative">
+                            <input type="number" id="tile_rate" placeholder="11" value="11" class="w-full p-2.5 pr-12" oninput="calculateTiles()">
+                            <span class="absolute right-3 top-2.5 text-xs text-tp-gray">片/m²</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Areas & Waste -->
+            <section class="card p-6">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-sm font-bold text-tp-black uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2 h-2 bg-tp-black rounded-full"></span>
+                        施工區域
+                    </h2>
+                    
+                    <!-- Waste Config Inline -->
+                    <div class="flex items-center gap-2 bg-tp-bg px-3 py-1.5 rounded border border-tp-border">
+                        <label class="text-xs text-tp-gray font-medium">預抓損耗</label>
+                        <input type="number" id="waste_percent" value="10" 
+                               class="w-12 p-0 bg-transparent border-none text-right text-xs font-mono font-bold focus:ring-0" 
+                               oninput="calculateTiles()">
+                        <span class="text-xs text-tp-gray">%</span>
+                    </div>
+                </div>
+
+                <!-- Areas List -->
+                <div class="space-y-3 mb-4" id="areas_container">
+                    <!-- JS generated rows -->
+                </div>
+
+                <button onclick="addArea()" class="btn-ghost w-full py-3 text-xs font-medium border-dashed flex items-center justify-center gap-2">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新增區域 (Add Area)
+                </button>
+            </section>
+
+        </div>
+
+        <!-- Right Column: Summary (Sticky) (4 cols) -->
+        <div class="lg:col-span-4">
+            <div class="sticky top-24 space-y-4">
+                
+                <!-- Summary Card -->
+                <section class="card p-0 overflow-hidden border-t-4 border-t-tp-black">
+                    <div class="p-6 bg-white">
+                        <h3 class="text-xs font-bold text-tp-gray uppercase tracking-widest mb-4">Quantity Estimation</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <div class="text-[10px] text-tp-gray uppercase mb-1">Estimated Pieces</div>
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-4xl font-bold font-mono-num text-tp-black" id="result_pieces">0</span>
+                                    <span class="text-sm text-tp-gray font-medium">片</span>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 border-t border-tp-border grid grid-cols-2 gap-4">
+                                <div>
+                                    <div class="text-[10px] text-tp-gray uppercase mb-1">Total Area (m²)</div>
+                                    <div class="text-xl font-bold font-mono-num" id="result_area_m2">0</div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-tp-gray uppercase mb-1">Sq. Units</div>
+                                    <div class="text-xl font-bold font-mono-num text-tp-gray" id="result_area_sq_unit">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Details Accordion-like -->
+                    <div class="bg-tp-bg px-6 py-4 border-t border-tp-border text-xs text-tp-gray space-y-1 font-mono">
+                        <div class="flex justify-between">
+                            <span>Base Qty:</span>
+                            <span id="base_pieces">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Waste (<span id="waste_display">10</span>%):</span>
+                            <span id="waste_pieces">0</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Action Button -->
+                <button onclick="copyToClipboard()" class="btn-primary w-full py-4 text-sm font-bold shadow-lg flex items-center justify-center gap-2">
+                    <span>複製庫存查詢單</span>
+                    <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                </button>
+                
+                <p id="toast-msg" class="text-center text-xs text-green-600 font-medium opacity-0 transition-opacity">
+                    ✓ 已複製，可直接貼至 LINE 查詢
+                </p>
+
+                <!-- Contact Info (Compact) -->
+                <div class="pt-6 border-t border-dashed border-gray-200 mt-6 text-center">
+                    <p class="text-[10px] text-tp-gray mb-3 uppercase tracking-widest">Contact Us</p>
+                    <div class="flex justify-center gap-4 flex-wrap">
+                        <a href="https://www.tilepark.com.tw/" target="_blank" class="text-xs font-bold text-tp-black hover:text-tp-gray flex items-center gap-1.5 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                            官方網站
+                        </a>
+                        <a href="https://line.me/ti/p/~@tileparktw" target="_blank" class="text-xs font-bold text-tp-black hover:text-[#06c755] flex items-center gap-1.5 transition-colors">
+                            <span class="w-1.5 h-1.5 bg-[#06c755] rounded-full"></span>
+                            LINE: @tileparktw
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden Textarea for Copy -->
+    <textarea id="copy_text_area" class="fixed top-0 left-0 opacity-0 pointer-events-none h-0 w-0"></textarea>
+
+    <script>
+        let areaCounter = 0;
+
+        function updateTileInputs() {
+            const mode = document.querySelector('input[name="calc_mode"]:checked').value;
+            const dimensionInputs = document.getElementById('tile_dimension_inputs');
+            const rateInput = document.getElementById('tile_rate_input');
+
+            if (mode === 'dimension') {
+                dimensionInputs.classList.remove('hidden');
+                dimensionInputs.classList.add('grid');
+                rateInput.classList.add('hidden');
+            } else {
+                dimensionInputs.classList.add('hidden');
+                dimensionInputs.classList.remove('grid');
+                rateInput.classList.remove('hidden');
+            }
+            calculateTiles();
+        }
+
+        function createAreaInputHTML(id, areaNumber, lengthValue = '', widthValue = '') {
+            return `
+                <div id="area-${id}" class="area-item group grid grid-cols-12 gap-3 items-center bg-white p-1 rounded-md">
+                    <div class="col-span-1 flex justify-center">
+                        <span class="text-[10px] font-mono font-bold text-tp-gray bg-tp-bg w-5 h-5 flex items-center justify-center rounded">
+                            ${areaNumber}
+                        </span>
+                    </div>
+                    
+                    <div class="col-span-10 grid grid-cols-2 gap-3">
+                        <div class="relative">
+                            <input type="number" id="area_length_${id}" placeholder="長" data-id="${id}"
+                                   class="w-full p-2 text-xs border border-tp-border rounded focus:border-tp-black bg-tp-bg focus:bg-white"
+                                   value="${lengthValue}" min="0.1" step="0.1" oninput="calculateTiles()">
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="area_width_${id}" placeholder="寬" data-id="${id}"
+                                   class="w-full p-2 text-xs border border-tp-border rounded focus:border-tp-black bg-tp-bg focus:bg-white"
+                                   value="${widthValue}" min="0.1" step="0.1" oninput="calculateTiles()">
+                        </div>
+                    </div>
+
+                    <div class="col-span-1 flex justify-center">
+                        <button onclick="removeArea(${id})" class="text-tp-border hover:text-red-500 transition-colors p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateAreaNumbers() {
+            const areas = document.querySelectorAll('.area-item');
+            areas.forEach((area, index) => {
+                const numBadge = area.querySelector('.font-mono');
+                if (numBadge) numBadge.textContent = index + 1;
+            });
+        }
+
+        function addArea(initialLength = '', initialWidth = '') {
+            areaCounter++;
+            const container = document.getElementById('areas_container');
+            const newAreaHTML = createAreaInputHTML(areaCounter, document.querySelectorAll('.area-item').length + 1, initialLength, initialWidth);
+            container.insertAdjacentHTML('beforeend', newAreaHTML);
+            updateAreaNumbers();
+            calculateTiles();
+        }
+
+        function removeArea(id) {
+            const element = document.getElementById(`area-${id}`);
+            if (element) {
+                element.remove();
+                updateAreaNumbers();
+                calculateTiles();
+            }
+        }
+
+        function resetResults() {
+            document.getElementById('result_pieces').textContent = '0';
+            document.getElementById('result_area_sq_unit').textContent = '0';
+            document.getElementById('result_area_m2').textContent = '0';
+            document.getElementById('base_pieces').textContent = '0';
+            document.getElementById('waste_pieces').textContent = '0';
+        }
+
+        function copyToClipboard() {
+            calculateTiles();
+            const copyText = document.getElementById("copy_text_area");
+            
+            // Try standard API first
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(copyText.value).then(showToast).catch(() => fallbackCopy(copyText));
+            } else {
+                fallbackCopy(copyText);
+            }
+        }
+
+        function fallbackCopy(element) {
+            element.select();
+            document.execCommand('copy');
+            showToast();
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast-msg');
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        }
+
+        function calculateTiles() {
+            const checkedMode = document.querySelector('input[name="calc_mode"]:checked');
+            if (!checkedMode) return;
+            const calcMode = checkedMode.value;
+
+            const tileModel = document.getElementById('tile_model').value.trim() || "未指定";
+            const tileLength = parseFloat(document.getElementById('tile_length').value);
+            const tileWidth = parseFloat(document.getElementById('tile_width').value);
+            const tileRate = parseFloat(document.getElementById('tile_rate').value);
+            const wastePercent = parseFloat(document.getElementById('waste_percent').value);
+
+            let isTileInputValid = true;
+            if (calcMode === 'dimension') {
+                if (!tileLength || tileLength <= 0 || !tileWidth || tileWidth <= 0) isTileInputValid = false;
+            } else {
+                if (!tileRate || tileRate <= 0) isTileInputValid = false;
+            }
+
+            if (!isTileInputValid || isNaN(wastePercent) || wastePercent < 0) {
+                resetResults();
+                return;
+            }
+
+            let totalAreaSqUnit = 0;
+            const areas = document.querySelectorAll('.area-item');
+            
+            if (areas.length === 0) {
+                resetResults();
+                return;
+            }
+
+            let allAreasValid = true;
+            areas.forEach(area => {
+                const inputs = area.querySelectorAll('input');
+                const len = parseFloat(inputs[0].value);
+                const wid = parseFloat(inputs[1].value);
+
+                if (len > 0 && wid > 0) {
+                    totalAreaSqUnit += len * wid;
+                } else if (!len || !wid) {
+                    allAreasValid = false;
+                }
+            });
+
+            if (!allAreasValid || totalAreaSqUnit <= 0) {
+                resetResults();
+                return;
+            }
+
+            const totalAreaM2 = totalAreaSqUnit / 10000;
+            let basePiecesFloat = 0;
+
+            if (calcMode === 'dimension') {
+                const tileAreaSqUnit = tileLength * tileWidth;
+                basePiecesFloat = totalAreaSqUnit / tileAreaSqUnit;
+            } else {
+                basePiecesFloat = totalAreaM2 * tileRate;
+            }
+
+            const wastePiecesFloat = basePiecesFloat * (wastePercent / 100);
+            const finalPieces = Math.ceil(basePiecesFloat + wastePiecesFloat);
+
+            // Update DOM
+            document.getElementById('result_pieces').textContent = finalPieces.toLocaleString('en-US');
+            document.getElementById('result_area_sq_unit').textContent = parseFloat(totalAreaSqUnit.toFixed(2)).toLocaleString('en-US');
+            document.getElementById('result_area_m2').textContent = parseFloat(totalAreaM2.toFixed(2)).toLocaleString('en-US');
+            document.getElementById('base_pieces').textContent = Math.ceil(basePiecesFloat).toLocaleString('en-US');
+            document.getElementById('waste_pieces').textContent = Math.ceil(wastePiecesFloat).toLocaleString('en-US');
+            document.getElementById('waste_display').textContent = wastePercent;
+
+            // Generate Stock Inquiry Text
+            const today = new Date().toLocaleDateString('zh-TW');
+            let copyText = `【磁磚庫存查詢】\nDATE: ${today}\n------------------------------\n型號: ${tileModel}\n\n需求總數: ${finalPieces} 片\n(含 ${wastePercent}% 損耗)\n\n總面積: ${parseFloat(totalAreaM2.toFixed(2))} M2\n------------------------------`;
+            
+            document.getElementById('copy_text_area').value = copyText;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check logo load
+            const img = document.getElementById('company-logo');
+            img.onerror = function() {
+                this.style.display = 'none';
+                document.getElementById('logo-fallback').classList.remove('hidden');
+            };
+            
+            addArea('300', '200');
+            updateTileInputs();
+        });
+    </script>
+</body>
+</html>
